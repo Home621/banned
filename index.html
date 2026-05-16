@@ -129,6 +129,8 @@
   function markUsed(n) { const u = getUsed(); u.push(n); localStorage.setItem(USED_KEY, JSON.stringify(u)); }
 
   async function doUnban(cmd, msgEl) {
+    // strip wrapper if they pasted the full console command e.g. unban("...")
+    cmd = (cmd||'').trim().replace(/^unban\(["']?/, '').replace(/["']?\)$/, '').trim();
     const parts = (cmd||'').split(':');
     if (parts.length !== 3) {
       if (msgEl) { msgEl.textContent = 'Invalid command.'; msgEl.className = 'err'; }
