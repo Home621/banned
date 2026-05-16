@@ -29,7 +29,7 @@
   // PUBKEY — derived from the master secret in your generator tool
   // pubkey = sha256(masterSecret).slice(0,32)
   // !! REPLACE THIS with your actual pubkey from the generator !!
-  const PUBKEY = 'REPLACE_WITH_YOUR_PUBKEY_HERE';
+  const PUBKEY = 'a552b54aa88e0cec068dad0686ec7258';
 
   async function sha256hex(str) {
     const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
