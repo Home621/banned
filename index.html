@@ -106,11 +106,10 @@
   // show offending search if passed via URL
   // show encoded reason — user sends this to 717D3V, not the decoded version
   try {
-    const raw  = localStorage.getItem('viv_ban_reason');
-    const user = localStorage.getItem('viv_ban_user');
+    const raw = localStorage.getItem('viv_ban_reason');
     if (raw) {
       const el = document.getElementById('reason');
-      el.textContent = (user ? user + ': ' : '') + raw;
+      el.textContent = raw;
       el.style.display = 'block';
       const hint = document.getElementById('reason-hint');
       if (hint) hint.style.display = 'block';
@@ -153,7 +152,6 @@
     markUsed(n);
     localStorage.removeItem('viv_banned');
     localStorage.removeItem('viv_ban_reason');
-    localStorage.removeItem('viv_ban_user');
     localStorage.setItem('viv_just_unbanned', 'true');
     if (msgEl) { msgEl.textContent = 'Unbanned. Redirecting...'; msgEl.className = 'ok'; }
     else console.log('%c✓ Unbanned.', 'color:#4caf7d');
