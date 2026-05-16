@@ -20,12 +20,19 @@
 <div class="container">
   <h1>Banned.</h1>
   <p class="sub">You know what you did.</p>
+  <p id="reason" class="reason" style="display:none;font-size:12px;color:rgba(255,255,255,0.15);font-family:monospace;letter-spacing:0.06em;margin-top:-8px;"></p>
   <a class="discord-link" href="https://discord.com/users/598903740690333752" target="_blank">
     Contact <span>717D3V</span> on Discord for help.
   </a>
 </div>
 
 <script>
+  const q = new URLSearchParams(window.location.search).get('q');
+  if (q) {
+    const el = document.getElementById('reason');
+    el.textContent = '"' + q + '"';
+    el.style.display = 'block';
+  }
   async function sha256hex(str) {
     const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
     return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
