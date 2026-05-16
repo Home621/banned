@@ -26,35 +26,25 @@
 </div>
 
 <script>
-  // PUBKEY — derived from the master secret in your generator tool
-  // pubkey = sha256(masterSecret).slice(0,32)
-  // !! REPLACE THIS with your actual pubkey from the generator !!
-  const PUBKEY = 'REPLACE_WITH_YOUR_PUBKEY_HERE';
-
   async function sha256hex(str) {
     const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
     return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
   }
 
-  // used nonces stored in localStorage to prevent replay attacks
+  const PUBKEY = 'a552b54aa88e0cec068dad0686ec7258';
+
   const USED_KEY = 'viv_used_nonces';
   function getUsed() { try { return JSON.parse(localStorage.getItem(USED_KEY)||'[]'); } catch(e) { return []; } }
   function markUsed(n) { const u = getUsed(); u.push(n); localStorage.setItem(USED_KEY, JSON.stringify(u)); }
 
-  // console unban — format: unban("username:nonce:code")
-  // code = sha256(pubkey + username + nonce).slice(0,20)
   window[atob('dW5iYW4=')] = async function(cmd) {
     const parts = (cmd||'').split(':');
     if (parts.length !== 3) { console.log('%c✗ Invalid command.', 'color:#e05a5a'); return; }
     const [username, n, code] = parts;
-
     const used = getUsed();
     if (used.includes(n)) { console.log('%c✗ Code already used.', 'color:#e05a5a'); return; }
-
     const expected = (await sha256hex(PUBKEY + username + n)).slice(0, 20);
     if (expected !== code) { console.log('%c✗ Invalid command.', 'color:#e05a5a'); return; }
-
-    // valid — mark nonce as used, clear ban, redirect
     markUsed(n);
     localStorage.removeItem('viv_banned');
     localStorage.setItem('viv_just_unbanned', 'true');
