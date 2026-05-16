@@ -6,47 +6,14 @@
 <title>Banned</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400&family=DM+Serif+Display:ital@0;1&display=swap');
-
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
-  html, body {
-    width:100%; height:100%;
-    background:#080808;
-    font-family:'DM Sans', sans-serif;
-    display:flex; align-items:center; justify-content:center;
-    overflow:hidden;
-    color:#fff;
-  }
-
-  .container {
-    display:flex; flex-direction:column; align-items:center;
-    gap:16px; text-align:center; padding:32px;
-    width:min(480px, 90vw);
-  }
-
-  h1 {
-    font-family:'DM Serif Display', serif;
-    font-size:clamp(56px, 10vw, 90px);
-    font-weight:400; color:#fff;
-    letter-spacing:-0.02em; line-height:1;
-  }
-
-  .sub {
-    font-size:13px; font-weight:300;
-    color:rgba(255,255,255,0.25);
-    letter-spacing:0.08em;
-  }
-
-  .discord-link {
-    margin-top:12px;
-    font-size:13px; font-weight:300;
-    color:rgba(255,255,255,0.2);
-    letter-spacing:0.06em;
-    text-decoration:none;
-    transition:color 0.2s;
-  }
+  html, body { width:100%; height:100%; background:#080808; font-family:'DM Sans',sans-serif; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#fff; }
+  .container { display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center; padding:32px; width:min(480px,90vw); }
+  h1 { font-family:'DM Serif Display',serif; font-size:clamp(56px,10vw,90px); font-weight:400; letter-spacing:-0.02em; line-height:1; }
+  .sub { font-size:13px; font-weight:300; color:rgba(255,255,255,0.25); letter-spacing:0.08em; }
+  .discord-link { margin-top:12px; font-size:13px; font-weight:300; color:rgba(255,255,255,0.2); letter-spacing:0.06em; text-decoration:none; transition:color 0.2s; }
   .discord-link:hover { color:rgba(255,255,255,0.5); }
-  .discord-link span { color:rgba(255,255,255,0.35); }
+  .discord-link span { color:rgba(255,255,255,0.38); }
 </style>
 </head>
 <body>
@@ -59,29 +26,40 @@
 </div>
 
 <script>
-  async function _dt(k) {
-    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('home621:' + k));
-    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('').slice(0, 16);
+  // PUBKEY — derived from the master secret in your generator tool
+  // pubkey = sha256(masterSecret).slice(0,32)
+  // !! REPLACE THIS with your actual pubkey from the generator !!
+  const PUBKEY = 'REPLACE_WITH_YOUR_PUBKEY_HERE';
+
+  async function sha256hex(str) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
   }
 
-  // console-only unban — user must open devtools and call this with their api key
-  // the prefix is only visible here in the banned page source, not on the main page
-  window[atob('dW5iYW4=')] = async function(cmd) {
-    const PREFIX = 'unban:621:';
-    if (!cmd || !cmd.startsWith(PREFIX)) { console.log('%cInvalid command.', 'color:#e05a5a'); return; }
-    const apiKey = cmd.slice(PREFIX.length);
-    const token = await _dt(apiKey);
-    const stored = localStorage.getItem('viv_banned');
-    if (stored === token) {
-      localStorage.removeItem('viv_banned');
-      console.log('%cUnbanned. Welcome back.', 'color:#4caf7d');
-      setTimeout(() => { window.location.href = 'https://home621.github.io/homepage/'; }, 800);
-    } else {
-      console.log('%cInvalid command.', 'color:#e05a5a');
-    }
-  };
+  // used nonces stored in localStorage to prevent replay attacks
+  const USED_KEY = 'viv_used_nonces';
+  function getUsed() { try { return JSON.parse(localStorage.getItem(USED_KEY)||'[]'); } catch(e) { return []; } }
+  function markUsed(n) { const u = getUsed(); u.push(n); localStorage.setItem(USED_KEY, JSON.stringify(u)); }
 
-  // print nothing to console — no hints
+  // console unban — format: unban("username:nonce:code")
+  // code = sha256(pubkey + username + nonce).slice(0,20)
+  window[atob('dW5iYW4=')] = async function(cmd) {
+    const parts = (cmd||'').split(':');
+    if (parts.length !== 3) { console.log('%c✗ Invalid command.', 'color:#e05a5a'); return; }
+    const [username, n, code] = parts;
+
+    const used = getUsed();
+    if (used.includes(n)) { console.log('%c✗ Code already used.', 'color:#e05a5a'); return; }
+
+    const expected = (await sha256hex(PUBKEY + username + n)).slice(0, 20);
+    if (expected !== code) { console.log('%c✗ Invalid command.', 'color:#e05a5a'); return; }
+
+    // valid — mark nonce as used, clear ban, redirect
+    markUsed(n);
+    localStorage.removeItem('viv_banned');
+    console.log('%c✓ Unbanned.', 'color:#4caf7d');
+    setTimeout(() => { window.location.href = 'https://home621.github.io/homepage/'; }, 800);
+  };
 </script>
 </body>
 </html>
