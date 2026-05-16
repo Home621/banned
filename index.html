@@ -6,58 +6,172 @@
 <title>Banned</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400&family=DM+Serif+Display:ital@0;1&display=swap');
+
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  html, body { width:100%; height:100%; background:#080808; font-family:'DM Sans',sans-serif; display:flex; align-items:center; justify-content:center; overflow:hidden; color:#fff; }
-  .container { display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center; padding:32px; width:min(480px,90vw); }
-  h1 { font-family:'DM Serif Display',serif; font-size:clamp(56px,10vw,90px); font-weight:400; letter-spacing:-0.02em; line-height:1; }
+
+  html, body {
+    width:100%; height:100%;
+    background:#080808;
+    font-family:'DM Sans',sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden; color:#fff;
+  }
+
+  .container {
+    display:flex; flex-direction:column; align-items:center;
+    gap:16px; text-align:center; padding:32px;
+    width:min(480px,90vw);
+  }
+
+  h1 {
+    font-family:'DM Serif Display',serif;
+    font-size:clamp(56px,10vw,90px);
+    font-weight:400; letter-spacing:-0.02em; line-height:1;
+  }
+
   .sub { font-size:13px; font-weight:300; color:rgba(255,255,255,0.25); letter-spacing:0.08em; }
-  .discord-link { margin-top:12px; font-size:13px; font-weight:300; color:rgba(255,255,255,0.2); letter-spacing:0.06em; text-decoration:none; transition:color 0.2s; }
+
+  #reason { font-size:12px; color:rgba(255,255,255,0.15); font-family:monospace; letter-spacing:0.06em; display:none; }
+
+  .discord-link { font-size:13px; font-weight:300; color:rgba(255,255,255,0.2); letter-spacing:0.06em; text-decoration:none; transition:color 0.2s; }
   .discord-link:hover { color:rgba(255,255,255,0.5); }
   .discord-link span { color:rgba(255,255,255,0.38); }
+
+  /* invisible tap target top-right — triple tap to reveal input */
+  #tap-zone {
+    position:fixed; top:0; right:0;
+    width:56px; height:56px;
+    background:transparent; border:none;
+    cursor:default; z-index:100;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  #unban-wrap {
+    display:none; flex-direction:column; gap:8px;
+    width:100%; margin-top:8px;
+  }
+  #unban-wrap.visible { display:flex; }
+
+  #unban-cmd {
+    width:100%;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:8px; color:rgba(255,255,255,0.7);
+    font-family:'DM Sans',sans-serif;
+    font-size:14px; font-weight:300;
+    padding:12px 16px; outline:none;
+    transition:border-color 0.2s;
+    text-align:center; letter-spacing:0.04em;
+  }
+  #unban-cmd:focus { border-color:rgba(255,255,255,0.2); }
+  #unban-cmd::placeholder { color:rgba(255,255,255,0.15); font-size:12px; }
+
+  #unban-submit {
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:8px; color:rgba(255,255,255,0.4);
+    font-family:'DM Sans',sans-serif;
+    font-size:13px; font-weight:300;
+    padding:10px; cursor:pointer;
+    transition:background 0.15s,color 0.15s;
+  }
+  #unban-submit:hover { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); }
+
+  #unban-msg { font-size:11px; color:rgba(255,255,255,0.2); min-height:14px; letter-spacing:0.06em; }
+  #unban-msg.ok  { color:rgba(100,220,120,0.7); }
+  #unban-msg.err { color:rgba(220,80,80,0.6); }
 </style>
 </head>
 <body>
+
+<!-- invisible triple-tap zone — top right corner, hidden from desktop users -->
+<button id="tap-zone" aria-hidden="true" tabindex="-1"></button>
+
 <div class="container">
   <h1>Banned.</h1>
   <p class="sub">You know what you did.</p>
-  <p id="reason" class="reason" style="display:none;font-size:12px;color:rgba(255,255,255,0.15);font-family:monospace;letter-spacing:0.06em;margin-top:-8px;"></p>
+  <p id="reason"></p>
   <a class="discord-link" href="https://discord.com/users/598903740690333752" target="_blank">
     Contact <span>717D3V</span> on Discord for help.
   </a>
+  <div id="unban-wrap">
+    <input id="unban-cmd" type="password" placeholder="Enter unban command" autocomplete="off" spellcheck="false"/>
+    <button id="unban-submit">Submit</button>
+    <div id="unban-msg"></div>
+  </div>
 </div>
 
 <script>
+  // show offending search if passed via URL
   const q = new URLSearchParams(window.location.search).get('q');
   if (q) {
     const el = document.getElementById('reason');
     el.textContent = '"' + q + '"';
     el.style.display = 'block';
   }
+
   async function sha256hex(str) {
     const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
     return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
   }
 
-  const PUBKEY = 'a552b54aa88e0cec068dad0686ec7258';
+  // !! REPLACE THIS with your pubkey from the generator !!
+  const PUBKEY = 'REPLACE_WITH_YOUR_PUBKEY_HERE';
 
   const USED_KEY = 'viv_used_nonces';
   function getUsed() { try { return JSON.parse(localStorage.getItem(USED_KEY)||'[]'); } catch(e) { return []; } }
   function markUsed(n) { const u = getUsed(); u.push(n); localStorage.setItem(USED_KEY, JSON.stringify(u)); }
 
-  window[atob('dW5iYW4=')] = async function(cmd) {
+  async function doUnban(cmd, msgEl) {
     const parts = (cmd||'').split(':');
-    if (parts.length !== 3) { console.log('%c✗ Invalid command.', 'color:#e05a5a'); return; }
+    if (parts.length !== 3) {
+      if (msgEl) { msgEl.textContent = 'Invalid command.'; msgEl.className = 'err'; }
+      else console.log('%c✗ Invalid command.', 'color:#e05a5a');
+      return;
+    }
     const [username, n, code] = parts;
-    const used = getUsed();
-    if (used.includes(n)) { console.log('%c✗ Code already used.', 'color:#e05a5a'); return; }
+    if (getUsed().includes(n)) {
+      if (msgEl) { msgEl.textContent = 'Code already used.'; msgEl.className = 'err'; }
+      else console.log('%c✗ Code already used.', 'color:#e05a5a');
+      return;
+    }
     const expected = (await sha256hex(PUBKEY + username + n)).slice(0, 20);
-    if (expected !== code) { console.log('%c✗ Invalid command.', 'color:#e05a5a'); return; }
+    if (expected !== code) {
+      if (msgEl) { msgEl.textContent = 'Invalid command.'; msgEl.className = 'err'; }
+      else console.log('%c✗ Invalid command.', 'color:#e05a5a');
+      return;
+    }
     markUsed(n);
     localStorage.removeItem('viv_banned');
     localStorage.setItem('viv_just_unbanned', 'true');
-    console.log('%c✓ Unbanned.', 'color:#4caf7d');
-    setTimeout(() => { window.location.href = 'https://home621.github.io/homepage/'; }, 800);
-  };
+    if (msgEl) { msgEl.textContent = 'Unbanned. Redirecting...'; msgEl.className = 'ok'; }
+    else console.log('%c✓ Unbanned.', 'color:#4caf7d');
+    setTimeout(() => { window.location.href = 'https://home621.github.io/homepage/'; }, 900);
+  }
+
+  // desktop: console command
+  window[atob('dW5iYW4=')] = (cmd) => doUnban(cmd, null);
+
+  // mobile: triple-tap top-right corner to reveal input
+  let taps = 0, tapTimer = null;
+  document.getElementById('tap-zone').addEventListener('click', () => {
+    taps++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { taps = 0; }, 700);
+    if (taps >= 3) {
+      taps = 0;
+      document.getElementById('unban-wrap').classList.toggle('visible');
+      document.getElementById('unban-cmd').focus();
+    }
+  });
+
+  const msgEl = document.getElementById('unban-msg');
+  document.getElementById('unban-submit').addEventListener('click', () => {
+    doUnban(document.getElementById('unban-cmd').value.trim(), msgEl);
+  });
+  document.getElementById('unban-cmd').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doUnban(e.target.value.trim(), msgEl);
+  });
 </script>
 </body>
 </html>
