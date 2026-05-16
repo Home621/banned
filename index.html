@@ -90,7 +90,8 @@
 <div class="container">
   <h1>Banned.</h1>
   <p class="sub">You know what you did.</p>
-  <p id="reason"></p>
+  <p id="reason" style="font-size:11px;color:rgba(255,255,255,0.2);font-family:monospace;letter-spacing:0.04em;word-break:break-all;max-width:100%;padding:0 8px;display:none;"></p>
+  <p id="reason-hint" style="font-size:11px;color:rgba(255,255,255,0.15);letter-spacing:0.06em;display:none;">Send the code above when contacting support.</p>
   <a class="discord-link" href="https://discord.com/users/598903740690333752" target="_blank">
     Contact <span>717D3V</span> on Discord for help.
   </a>
@@ -103,12 +104,17 @@
 
 <script>
   // show offending search if passed via URL
-  const q = new URLSearchParams(window.location.search).get('q');
-  if (q) {
-    const el = document.getElementById('reason');
-    el.textContent = '"' + q + '"';
-    el.style.display = 'block';
-  }
+  // show encoded reason — user sends this to 717D3V, not the decoded version
+  try {
+    const raw = localStorage.getItem('viv_ban_reason');
+    if (raw) {
+      const el = document.getElementById('reason');
+      el.textContent = raw;
+      el.style.display = 'block';
+      const hint = document.getElementById('reason-hint');
+      if (hint) hint.style.display = 'block';
+    }
+  } catch(e) {}
 
   async function sha256hex(str) {
     const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -143,6 +149,7 @@
     }
     markUsed(n);
     localStorage.removeItem('viv_banned');
+    localStorage.removeItem('viv_ban_reason');
     localStorage.setItem('viv_just_unbanned', 'true');
     if (msgEl) { msgEl.textContent = 'Unbanned. Redirecting...'; msgEl.className = 'ok'; }
     else console.log('%c✓ Unbanned.', 'color:#4caf7d');
